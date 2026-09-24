@@ -7,6 +7,8 @@ import {
 
 import LabelRenderer from "@/components/label-renderer";
 import type { LabelJob } from "@/models/label-job";
+import { generateLabelPdf } from "@/services/pdf-service";
+import * as Sharing from "expo-sharing";
 
 const COLORS = {
   navy: "#142B4A",
@@ -49,6 +51,21 @@ export default function ReviewScreen() {
       </SafeAreaView>
     );
   }
+
+  const handlePrint = async () => {
+    try {
+      const result = await generateLabelPdf(job);
+
+      console.log("Label PDF generated:", result.uri);
+
+      await Sharing.shareAsync(result.uri, {
+        mimeType: "application/pdf",
+        dialogTitle: "Open Label PDF",
+      });
+    } catch (error) {
+      console.error("Failed to generate or share label PDF:", error);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -103,7 +120,7 @@ export default function ReviewScreen() {
 
         {/* Print Button */}
 
-        <Pressable style={styles.button}>
+        <Pressable style={styles.button} onPress={handlePrint}>
           <Text style={styles.buttonText}>PRINT</Text>
         </Pressable>
       </ScrollView>
