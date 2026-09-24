@@ -16,7 +16,8 @@ import {
 import LabelRenderer from "@/components/label-renderer";
 import { updateLabelJobStatus } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
-import { MockPrintService } from "@/services/mock-print-service";
+import { MockLabelPrinter } from "@/services/printing/mock/mock-label-printer";
+import type { LabelPrinterService } from "@/services/printing/printer-service";
 
 const COLORS = {
   navy: "#142B4A",
@@ -73,9 +74,9 @@ export default function ReviewScreen() {
       setIsPrinting(true);
       setCurrentBox(0);
 
-      const printService = new MockPrintService();
+      const printer: LabelPrinterService = new MockLabelPrinter();
 
-      const result = await printService.print(job, (progress) => {
+      const result = await printer.print(job, (progress) => {
         setCurrentBox(progress.currentBox);
       });
 

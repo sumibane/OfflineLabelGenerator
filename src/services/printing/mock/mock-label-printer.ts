@@ -1,11 +1,8 @@
 import type { LabelJob } from "@/models/label-job";
-import type {
-  PrintProgress,
-  PrintResult,
-  PrintService,
-} from "@/services/print-service";
+import type { PrintProgress, PrintResult } from "../print-types";
+import type { LabelPrinterService } from "../printer-service";
 
-export class MockPrintService implements PrintService {
+export class MockLabelPrinter implements LabelPrinterService {
   async print(
     job: LabelJob,
     onProgress?: (progress: PrintProgress) => void,
