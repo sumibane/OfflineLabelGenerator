@@ -14,6 +14,7 @@ import {
 } from "react-native-safe-area-context";
 
 import LabelRenderer from "@/components/label-renderer";
+import { updateLabelJobStatus } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
 import { MockPrintService } from "@/services/mock-print-service";
 
@@ -79,7 +80,9 @@ export default function ReviewScreen() {
       });
 
       if (result.status === "completed") {
+        await updateLabelJobStatus(job.id, "Completed");
         console.log("Mock printing completed successfully.");
+        router.replace("/success");
       } else if (result.status === "cancelled") {
         console.log("Mock printing cancelled.");
       } else {

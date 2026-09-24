@@ -49,6 +49,23 @@ export async function saveLabelJob(job: LabelJob) {
   );
 }
 
+export async function updateLabelJobStatus(
+  id: string,
+  printStatus: LabelJob["printStatus"],
+) {
+  const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+
+  await db.runAsync(
+    `
+      UPDATE LabelJob
+      SET printStatus = ?
+      WHERE id = ?
+    `,
+    printStatus,
+    id,
+  );
+}
+
 export async function getAllLabelJobs(): Promise<LabelJob[]> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
 
