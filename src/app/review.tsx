@@ -5,6 +5,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import LabelRenderer from "@/components/label-renderer";
 import type { LabelJob } from "@/models/label-job";
 
 const COLORS = {
@@ -95,51 +96,7 @@ export default function ReviewScreen() {
         <View style={styles.previewSection}>
           <Text style={styles.previewTitle}>Label Preview</Text>
 
-          <View style={styles.labelPreview}>
-            {/* Company */}
-
-            <Text style={styles.previewCompany}>RUDRAX LOGISTICS SERVICES</Text>
-
-            <View style={styles.divider} />
-
-            {/* Docket */}
-
-            <View style={styles.previewField}>
-              <Text style={styles.previewLabel}>DOCKET NUMBER</Text>
-
-              <Text
-                style={styles.previewDocket}
-                numberOfLines={2}
-                adjustsFontSizeToFit
-              >
-                {job.docketNumber}
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            {/* Location */}
-
-            <View style={styles.previewField}>
-              <Text style={styles.previewLabel}>LOCATION</Text>
-
-              <Text
-                style={styles.previewLocation}
-                numberOfLines={2}
-                adjustsFontSizeToFit
-              >
-                {job.locationText}
-              </Text>
-            </View>
-
-            {/* Box Number */}
-
-            <View style={styles.boxSection}>
-              <Text style={styles.previewLabel}>BOX</Text>
-
-              <Text style={styles.previewBox}>{`1/${job.boxCount}`}</Text>
-            </View>
-          </View>
+          <LabelRenderer job={job} boxNumber={1} />
 
           <Text style={styles.previewNote}>Preview of the first label</Text>
         </View>
@@ -232,68 +189,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: COLORS.navy,
     marginBottom: 12,
-  },
-
-  labelPreview: {
-    width: "100%",
-    aspectRatio: 3 / 4,
-    backgroundColor: COLORS.white,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    borderRadius: 8,
-    padding: 16,
-  },
-
-  previewCompany: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: COLORS.navy,
-    textAlign: "center",
-    letterSpacing: 0.4,
-    marginBottom: 12,
-  },
-
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    width: "100%",
-  },
-
-  previewField: {
-    paddingVertical: 16,
-  },
-
-  previewLabel: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: COLORS.secondaryText,
-    letterSpacing: 0.8,
-    marginBottom: 5,
-  },
-
-  previewDocket: {
-    fontSize: 27,
-    fontWeight: "800",
-    color: COLORS.navy,
-  },
-
-  previewLocation: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: COLORS.navy,
-  },
-
-  boxSection: {
-    marginTop: "auto",
-    paddingTop: 16,
-    alignItems: "center",
-  },
-
-  previewBox: {
-    fontSize: 34,
-    fontWeight: "900",
-    color: COLORS.orange,
-    letterSpacing: 0.5,
   },
 
   previewNote: {
