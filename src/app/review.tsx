@@ -1,5 +1,13 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useState } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -7,8 +15,7 @@ import {
 
 import LabelRenderer from "@/components/label-renderer";
 import type { LabelJob } from "@/models/label-job";
-import { generateLabelPdf } from "@/services/pdf-service";
-import * as Sharing from "expo-sharing";
+import { MockPrintService } from "@/services/mock-print-service";
 
 const COLORS = {
   navy: "#142B4A",
@@ -17,12 +24,16 @@ const COLORS = {
   white: "#FFFFFF",
   border: "#D9DEE5",
   secondaryText: "#667085",
+  overlay: "rgba(0, 0, 0, 0.45)",
 };
 
 export default function ReviewScreen() {
   const insets = useSafeAreaInsets();
 
   const { labelJob } = useLocalSearchParams<{ labelJob: string }>();
+
+  const [isPrinting, setIsPrinting] = useState(false);
+  const [currentBox, setCurrentBox] = useState(0);
 
   let job: LabelJob | null = null;
 
@@ -53,19 +64,36 @@ export default function ReviewScreen() {
   }
 
   const handlePrint = async () => {
+    if (isPrinting) {
+      return;
+    }
+
     try {
-      const result = await generateLabelPdf(job);
+      setIsPrinting(true);
+      setCurrentBox(0);
 
-      console.log("Label PDF generated:", result.uri);
+      const printService = new MockPrintService();
 
-      await Sharing.shareAsync(result.uri, {
-        mimeType: "application/pdf",
-        dialogTitle: "Open Label PDF",
+      const result = await printService.print(job, (progress) => {
+        setCurrentBox(progress.currentBox);
       });
+
+      if (result.status === "completed") {
+        console.log("Mock printing completed successfully.");
+      } else if (result.status === "cancelled") {
+        console.log("Mock printing cancelled.");
+      } else {
+        console.error("Mock printing failed:", result.error);
+      }
     } catch (error) {
-      console.error("Failed to generate or share label PDF:", error);
+      console.error("Mock printing error:", error);
+    } finally {
+      setIsPrinting(false);
+      setCurrentBox(0);
     }
   };
+
+  const progress = job.boxCount > 0 ? currentBox / job.boxCount : 0;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
@@ -120,9 +148,45 @@ export default function ReviewScreen() {
 
         {/* Print Button */}
 
-        <Pressable style={styles.button} onPress={handlePrint}>
+        <Pressable
+          style={[styles.button, isPrinting && styles.buttonDisabled]}
+          onPress={handlePrint}
+          disabled={isPrinting}
+        >
           <Text style={styles.buttonText}>PRINT</Text>
         </Pressable>
+
+        {/* Printing Modal */}
+
+        <Modal
+          visible={isPrinting}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.printingModal}>
+              <Text style={styles.printingTitle}>Printing Labels</Text>
+
+              <Text style={styles.printingProgress}>
+                {currentBox} / {job.boxCount}
+              </Text>
+
+              <View style={styles.progressTrack}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${progress * 100}%`,
+                    },
+                  ]}
+                />
+              </View>
+
+              <Text style={styles.printingMessage}>Please wait...</Text>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </SafeAreaView>
   );
@@ -226,10 +290,67 @@ const styles = StyleSheet.create({
     marginTop: 24,
   },
 
+  buttonDisabled: {
+    opacity: 0.6,
+  },
+
   buttonText: {
     color: COLORS.white,
     fontSize: 16,
     fontWeight: "700",
+  },
+
+  /* Printing Modal */
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.overlay,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+
+  printingModal: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    padding: 28,
+    alignItems: "center",
+  },
+
+  printingTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: COLORS.navy,
+  },
+
+  printingProgress: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.navy,
+  },
+
+  progressTrack: {
+    width: "100%",
+    height: 10,
+    marginTop: 22,
+    borderRadius: 5,
+    overflow: "hidden",
+    backgroundColor: COLORS.border,
+  },
+
+  progressFill: {
+    height: "100%",
+    borderRadius: 5,
+    backgroundColor: COLORS.navy,
+  },
+
+  printingMessage: {
+    marginTop: 14,
+    fontSize: 14,
+    color: COLORS.secondaryText,
   },
 
   errorText: {
