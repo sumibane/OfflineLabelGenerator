@@ -16,8 +16,7 @@ import {
 import LabelRenderer from "@/components/label-renderer";
 import { updateLabelJobStatus } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
-import { MockLabelPrinter } from "@/services/printing/mock/mock-label-printer";
-import type { LabelPrinterService } from "@/services/printing/printer-service";
+import { getPrinterService } from "@/services/printing/printer-service-factory";
 
 const COLORS = {
   navy: "#142B4A",
@@ -74,7 +73,7 @@ export default function ReviewScreen() {
       setIsPrinting(true);
       setCurrentBox(0);
 
-      const printer: LabelPrinterService = new MockLabelPrinter();
+      const printer = await getPrinterService();
 
       const result = await printer.print(job, (progress) => {
         setCurrentBox(progress.currentBox);
@@ -82,15 +81,15 @@ export default function ReviewScreen() {
 
       if (result.status === "completed") {
         await updateLabelJobStatus(job.id, "Completed");
-        console.log("Mock printing completed successfully.");
+        console.log("Printing completed successfully.");
         router.replace("/success");
       } else if (result.status === "cancelled") {
-        console.log("Mock printing cancelled.");
+        console.log("Printing cancelled.");
       } else {
-        console.error("Mock printing failed:", result.error);
+        console.error("Printing failed:", result.error);
       }
     } catch (error) {
-      console.error("Mock printing error:", error);
+      console.error("Printing error:", error);
     } finally {
       setIsPrinting(false);
       setCurrentBox(0);

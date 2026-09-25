@@ -36,7 +36,8 @@
       ],
       "expo-sqlite",
       "expo-asset",
-      "expo-sharing"
+      "expo-sharing",
+      "with-rn-bluetooth-classic"
     ],
     "experiments": {
       "typedRoutes": true,
