@@ -1,11 +1,11 @@
-import { NativeTabs } from 'expo-router/unstable-native-tabs';
-import { useColorScheme } from 'react-native';
+import { NativeTabs } from "expo-router/unstable-native-tabs";
+import { useColorScheme } from "react-native";
 
-import { Colors } from '@/constants/theme';
+import { Colors } from "@/constants/theme";
 
 export default function AppTabs() {
   const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
+  const colors = Colors[scheme === "unspecified" ? "light" : scheme];
 
   return (
     <NativeTabs
@@ -16,7 +16,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Label>New Label</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/home.png')}
+          src={require("@/assets/images/tabIcons/newlabel.png")}
           renderingMode="template"
         />
       </NativeTabs.Trigger>
@@ -24,7 +24,7 @@ export default function AppTabs() {
       <NativeTabs.Trigger name="history">
         <NativeTabs.Trigger.Label>History</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require('@/assets/images/tabIcons/explore.png')}
+          src={require("@/assets/images/tabIcons/history.png")}
           renderingMode="template"
         />
       </NativeTabs.Trigger>

@@ -3,7 +3,17 @@ import * as SQLite from "expo-sqlite";
 
 const DATABASE_NAME = "rudrax.db";
 
-export async function initializeDatabase() {
+let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
+
+function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+  if (!databasePromise) {
+    databasePromise = initializeDatabase();
+  }
+
+  return databasePromise;
+}
+
+export async function initializeDatabase(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
 
   await db.execAsync(`
@@ -24,7 +34,7 @@ export async function initializeDatabase() {
 }
 
 export async function saveLabelJob(job: LabelJob) {
-  const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+  const db = await getDatabase();
 
   await db.runAsync(
     `
@@ -53,7 +63,7 @@ export async function updateLabelJobStatus(
   id: string,
   printStatus: LabelJob["printStatus"],
 ) {
-  const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+  const db = await getDatabase();
 
   await db.runAsync(
     `
@@ -67,7 +77,7 @@ export async function updateLabelJobStatus(
 }
 
 export async function getAllLabelJobs(): Promise<LabelJob[]> {
-  const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
+  const db = await getDatabase();
 
   const jobs = await db.getAllAsync<LabelJob>(
     `
