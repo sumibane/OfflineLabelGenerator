@@ -1,19 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const SELECTED_PRINTER_KEY = "@rudrax/selected-bluetooth-printer";
+import type { PrinterConfig } from "../printer-config";
 
-export type SavedBluetoothPrinter = {
-  address: string;
-  name: string;
-};
+const SELECTED_PRINTER_KEY = "@rudrax/selected-printer";
 
 export async function saveSelectedPrinter(
-  printer: SavedBluetoothPrinter,
+  printer: PrinterConfig,
 ): Promise<void> {
   await AsyncStorage.setItem(SELECTED_PRINTER_KEY, JSON.stringify(printer));
 }
 
-export async function getSelectedPrinter(): Promise<SavedBluetoothPrinter | null> {
+export async function getSelectedPrinter(): Promise<PrinterConfig | null> {
   const value = await AsyncStorage.getItem(SELECTED_PRINTER_KEY);
 
   if (!value) {
@@ -21,7 +18,7 @@ export async function getSelectedPrinter(): Promise<SavedBluetoothPrinter | null
   }
 
   try {
-    return JSON.parse(value) as SavedBluetoothPrinter;
+    return JSON.parse(value) as PrinterConfig;
   } catch {
     return null;
   }

@@ -1,20 +1,30 @@
-import { getSelectedPrinter } from "./bluetooth/bluetooth-printer-storage";
-import { MockLabelPrinter } from "./mock/mock-label-printer";
 import type { LabelPrinterService } from "./printer-service";
-import { TsplEncoder } from "./protocols/tspl/tspl-encoder";
+
+import { MockLabelPrinter } from "./mock/mock-label-printer";
+
+import { getSelectedPrinter } from "./bluetooth/bluetooth-printer-storage";
+
 import { BluetoothTransport } from "./transports/bluetooth/bluetooth-transport";
+
+import { TsplEncoder } from "./protocols/tspl/tspl-encoder";
+
 import { TscPrinterService } from "./tsc/tsc-printer-service";
 
 export async function getPrinterService(): Promise<LabelPrinterService> {
-  const selectedPrinter = await getSelectedPrinter();
+  const printer = await getSelectedPrinter();
 
-  if (!selectedPrinter) {
+  if (!printer) {
     return new MockLabelPrinter();
   }
 
-  const transport = new BluetoothTransport(selectedPrinter.address);
+  if (printer.connectionType === "bluetooth" && printer.protocol === "tspl") {
+    const transport = new BluetoothTransport(printer.address);
+    const protocol = new TsplEncoder();
 
-  const protocol = new TsplEncoder();
+    return new TscPrinterService(protocol, transport);
+  }
 
-  return new TscPrinterService(protocol, transport);
+  throw new Error(
+    `Unsupported printer configuration: ${printer.connectionType}/${printer.protocol}`,
+  );
 }

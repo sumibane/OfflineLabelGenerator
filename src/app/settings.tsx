@@ -20,8 +20,9 @@ import {
   clearSelectedPrinter,
   getSelectedPrinter,
   saveSelectedPrinter,
-  type SavedBluetoothPrinter,
 } from "@/services/printing/bluetooth/bluetooth-printer-storage";
+
+import type { PrinterConfig } from "@/services/printing/printer-config";
 
 import { BluetoothTransport } from "@/services/printing/transports/bluetooth/bluetooth-transport";
 
@@ -33,8 +34,9 @@ export default function SettingsScreen() {
     BluetoothPrinter[]
   >([]);
 
-  const [selectedPrinter, setSelectedPrinter] =
-    useState<SavedBluetoothPrinter | null>(null);
+  const [selectedPrinter, setSelectedPrinter] = useState<PrinterConfig | null>(
+    null,
+  );
 
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("Ready");
@@ -46,6 +48,7 @@ export default function SettingsScreen() {
   async function loadSettings() {
     try {
       const savedPrinter = await getSelectedPrinter();
+
       setSelectedPrinter(savedPrinter);
 
       const enabled = await ensureBluetoothEnabled();
@@ -170,15 +173,16 @@ export default function SettingsScreen() {
       await transport.connect();
       await transport.disconnect();
 
-      await saveSelectedPrinter({
+      const config: PrinterConfig = {
         address: printer.address,
         name: printer.name,
-      });
+        connectionType: "bluetooth",
+        protocol: "tspl",
+      };
 
-      setSelectedPrinter({
-        address: printer.address,
-        name: printer.name,
-      });
+      await saveSelectedPrinter(config);
+
+      setSelectedPrinter(config);
 
       setStatus(`${printer.name} selected`);
     } catch (error) {
@@ -207,7 +211,6 @@ export default function SettingsScreen() {
 
       <Text style={styles.status}>{status}</Text>
 
-      {/* Selected Printer */}
       <View style={styles.selectedCard}>
         <Text style={styles.sectionTitle}>Selected Printer</Text>
 
@@ -216,6 +219,8 @@ export default function SettingsScreen() {
             <Text style={styles.deviceName}>{selectedPrinter.name}</Text>
 
             <Text style={styles.deviceAddress}>{selectedPrinter.address}</Text>
+
+            <Text style={styles.deviceProtocol}>Bluetooth • TSPL</Text>
 
             <Pressable
               style={styles.removeButton}
@@ -230,7 +235,6 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      {/* Paired Bluetooth Devices */}
       <Text style={styles.sectionTitle}>Paired Bluetooth Devices</Text>
 
       <Pressable
@@ -285,7 +289,6 @@ export default function SettingsScreen() {
         })
       )}
 
-      {/* Nearby Bluetooth Devices */}
       <Text style={styles.sectionTitle}>Nearby Bluetooth Devices</Text>
 
       <Pressable
@@ -399,6 +402,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#667085",
     marginTop: 4,
+  },
+
+  deviceProtocol: {
+    fontSize: 12,
+    color: "#667085",
+    marginTop: 6,
   },
 
   primaryButton: {
