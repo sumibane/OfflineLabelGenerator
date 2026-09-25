@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
+  Alert,
   Modal,
   Pressable,
   ScrollView,
@@ -16,7 +17,8 @@ import {
 import LabelRenderer from "@/components/label-renderer";
 import { updateLabelJobStatus } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
-import { getPrinterService } from "@/services/printing/printer-service-factory";
+import { saveLabelPdf } from "@/services/pdf-service";
+import { MockLabelPrinter } from "@/services/printing/mock/mock-label-printer";
 
 const COLORS = {
   navy: "#142B4A",
@@ -34,6 +36,7 @@ export default function ReviewScreen() {
   const { labelJob } = useLocalSearchParams<{ labelJob: string }>();
 
   const [isPrinting, setIsPrinting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [currentBox, setCurrentBox] = useState(0);
 
   let job: LabelJob | null = null;
@@ -64,8 +67,32 @@ export default function ReviewScreen() {
     );
   }
 
+  const handleSave = async () => {
+    if (isSaving || isPrinting) {
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+
+      const savedUri = await saveLabelPdf(job);
+
+      console.log("PDF saved successfully:", savedUri);
+
+      Alert.alert("Saved", "The label PDF has been saved to local storage.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      console.error("PDF save error:", error);
+
+      Alert.alert("Save Failed", message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handlePrint = async () => {
-    if (isPrinting) {
+    if (isPrinting || isSaving) {
       return;
     }
 
@@ -73,7 +100,7 @@ export default function ReviewScreen() {
       setIsPrinting(true);
       setCurrentBox(0);
 
-      const printer = await getPrinterService();
+      const printer = new MockLabelPrinter();
 
       const result = await printer.print(job, (progress) => {
         setCurrentBox(progress.currentBox);
@@ -149,15 +176,35 @@ export default function ReviewScreen() {
           <Text style={styles.previewNote}>Preview of the first label</Text>
         </View>
 
-        {/* Print Button */}
+        {/* Save / Print Buttons */}
 
-        <Pressable
-          style={[styles.button, isPrinting && styles.buttonDisabled]}
-          onPress={handlePrint}
-          disabled={isPrinting}
-        >
-          <Text style={styles.buttonText}>PRINT</Text>
-        </Pressable>
+        <View style={styles.buttonRow}>
+          <Pressable
+            style={[
+              styles.actionButton,
+              styles.saveButton,
+              (isSaving || isPrinting) && styles.buttonDisabled,
+            ]}
+            onPress={handleSave}
+            disabled={isSaving || isPrinting}
+          >
+            <Text style={styles.saveButtonText}>
+              {isSaving ? "SAVING..." : "SAVE"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            style={[
+              styles.actionButton,
+              styles.printButton,
+              (isPrinting || isSaving) && styles.buttonDisabled,
+            ]}
+            onPress={handlePrint}
+            disabled={isPrinting || isSaving}
+          >
+            <Text style={styles.buttonText}>PRINT</Text>
+          </Pressable>
+        </View>
 
         {/* Printing Modal */}
 
@@ -282,15 +329,30 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  /* Print */
+  /* Save / Print Buttons */
 
-  button: {
+  buttonRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 24,
+  },
+
+  actionButton: {
+    flex: 1,
     height: 56,
-    backgroundColor: COLORS.navy,
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 24,
+  },
+
+  saveButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 1,
+    borderColor: COLORS.navy,
+  },
+
+  printButton: {
+    backgroundColor: COLORS.navy,
   },
 
   buttonDisabled: {
@@ -301,6 +363,23 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 16,
     fontWeight: "700",
+  },
+
+  saveButtonText: {
+    color: COLORS.navy,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  /* Existing Generic Button */
+
+  button: {
+    height: 56,
+    backgroundColor: COLORS.navy,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 24,
   },
 
   /* Printing Modal */

@@ -24,7 +24,7 @@ import {
 
 import type { PrinterConfig } from "@/services/printing/printer-config";
 
-import { BluetoothTransport } from "@/services/printing/transports/bluetooth/bluetooth-transport";
+import BluetoothClassic from "react-native-bluetooth-classic";
 
 import { looksLikePrinter } from "@/services/printing/bluetooth/bluetooth-printer-validator";
 
@@ -168,10 +168,13 @@ export default function SettingsScreen() {
       setLoading(true);
       setStatus(`Testing ${printer.name}...`);
 
-      const transport = new BluetoothTransport(printer.address);
+      const device = await BluetoothClassic.connectToDevice(printer.address);
 
-      await transport.connect();
-      await transport.disconnect();
+      if (!device) {
+        throw new Error("Unable to connect to the Bluetooth device.");
+      }
+
+      await device.disconnect();
 
       const config: PrinterConfig = {
         address: printer.address,
