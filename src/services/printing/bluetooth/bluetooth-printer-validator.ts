@@ -1,6 +1,6 @@
 import type { BluetoothPrinter } from "./bluetooth-printer-manager";
 
-const PRINTER_KEYWORDS = ["tsc", "alpha", "printer", "label", "barcode"];
+const TSC_PRINTER_KEYWORDS = ["tsc", "alpha", "bt-spp", "btspp"];
 
 export function looksLikePrinter(device: BluetoothPrinter): boolean {
   const name = device.name.trim().toLowerCase();
@@ -9,5 +9,5 @@ export function looksLikePrinter(device: BluetoothPrinter): boolean {
     return false;
   }
 
-  return PRINTER_KEYWORDS.some((keyword) => name.includes(keyword));
+  return TSC_PRINTER_KEYWORDS.some((keyword) => name.includes(keyword));
 }
