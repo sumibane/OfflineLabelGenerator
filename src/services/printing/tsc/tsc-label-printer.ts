@@ -385,10 +385,6 @@ export class TscLabelPrinter implements LabelPrinterService {
     let device;
 
     try {
-      console.log("=== TSC PRINT START ===");
-      console.log("Printer:", printer.name);
-      console.log("Address:", printer.address);
-
       device = await BluetoothClassic.connectToDevice(printer.address);
 
       if (!device) {
@@ -397,10 +393,6 @@ export class TscLabelPrinter implements LabelPrinterService {
 
       for (let boxNumber = 1; boxNumber <= job.boxCount; boxNumber += 1) {
         const tspl = buildTestLabel(job, boxNumber);
-
-        console.log(`Sending TSPL for box ${boxNumber}/${job.boxCount}`);
-        console.log("TSPL bytes:", tspl.length);
-        console.log("Logo bytes:", RUDRAX_LOGO_BITMAP.length);
 
         await writeInChunks(device, tspl);
 
@@ -413,8 +405,6 @@ export class TscLabelPrinter implements LabelPrinterService {
           await new Promise((resolve) => setTimeout(resolve, 150));
         }
       }
-
-      console.log("=== TSC PRINT COMPLETE ===");
 
       return {
         status: "completed",

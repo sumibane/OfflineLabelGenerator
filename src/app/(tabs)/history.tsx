@@ -37,8 +37,6 @@ export default function HistoryScreen() {
 
       const savedUri = await saveLabelPdf(job);
 
-      console.log("PDF saved successfully:", savedUri);
-
       Alert.alert("Saved", "The label PDF has been saved to local storage.");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -65,8 +63,6 @@ export default function HistoryScreen() {
       });
 
       if (result.status === "completed") {
-        console.log("Reprint completed successfully.");
-
         setCurrentBox(job.boxCount);
 
         router.replace("/success");
@@ -94,8 +90,6 @@ export default function HistoryScreen() {
       const savedJobs = await getAllLabelJobs();
 
       setJobs(savedJobs);
-
-      console.log("History loaded:", savedJobs);
     } catch (error) {
       console.error("Failed to load history:", error);
 

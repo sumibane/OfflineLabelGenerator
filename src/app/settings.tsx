@@ -68,7 +68,6 @@ export default function SettingsScreen() {
           : "No paired Bluetooth devices",
       );
     } catch (error) {
-      console.log("Bluetooth settings load failed:", error);
       setStatus("Bluetooth unavailable");
     }
   }

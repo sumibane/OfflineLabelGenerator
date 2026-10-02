@@ -12,13 +12,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   useEffect(() => {
-    initializeDatabase()
-      .then(() => {
-        console.log("Rudrax database initialized.");
-      })
-      .catch((error) => {
-        console.error("Failed to initialize Rudrax database:", error);
-      });
+    initializeDatabase();
   }, []);
 
   return (

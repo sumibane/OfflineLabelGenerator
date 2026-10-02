@@ -2,7 +2,7 @@ import { saveLabelJob } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
 import { printLabelJob } from "@/services/printing/print-label-job";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Image,
   Modal,
@@ -28,24 +28,97 @@ const COLORS = {
 };
 
 export default function NewLabelScreen() {
-  const [docketNumber, setDocketNumber] = useState("");
+  const [docketNumber, setDocketNumber] = useState<string[]>([
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+  ]);
+
+  const [activeDocketIndex, setActiveDocketIndex] = useState(0);
+
   const [location, setLocation] = useState("");
   const [boxCount, setBoxCount] = useState("");
 
   const [isPrinting, setIsPrinting] = useState(false);
   const [currentBox, setCurrentBox] = useState(0);
 
+  const docketInputRefs = useRef<Array<TextInput | null>>([]);
+
+  const handleDocketChange = (value: string, index: number) => {
+    const digits = value.replace(/\D/g, "");
+
+    // Ignore empty/malformed input.
+    if (!digits) {
+      const updated = [...docketNumber];
+      updated[index] = "";
+
+      setDocketNumber(updated);
+      return;
+    }
+
+    const updated = [...docketNumber];
+
+    // Handle pasted/multiple digits.
+    if (digits.length > 1) {
+      digits
+        .slice(0, 6 - index)
+        .split("")
+        .forEach((digit, offset) => {
+          updated[index + offset] = digit;
+        });
+
+      setDocketNumber(updated);
+
+      const nextIndex = Math.min(index + digits.length, 5);
+
+      setActiveDocketIndex(nextIndex);
+
+      docketInputRefs.current[nextIndex]?.focus();
+
+      return;
+    }
+
+    updated[index] = digits;
+
+    setDocketNumber(updated);
+
+    // Automatically move to the next box.
+    if (index < 5) {
+      setActiveDocketIndex(index + 1);
+      docketInputRefs.current[index + 1]?.focus();
+    } else {
+      setActiveDocketIndex(5);
+    }
+  };
+
+  const handleDocketKeyPress = (event: any, index: number) => {
+    if (
+      event.nativeEvent.key === "Backspace" &&
+      !docketNumber[index] &&
+      index > 0
+    ) {
+      const previousIndex = index - 1;
+
+      setActiveDocketIndex(previousIndex);
+
+      docketInputRefs.current[previousIndex]?.focus();
+    }
+  };
+
   const handleGenerate = async () => {
     if (isPrinting) {
       return;
     }
 
-    const trimmedDocket = docketNumber.trim();
+    const trimmedDocket = docketNumber.join("");
     const trimmedLocation = location.trim();
     const boxes = Number(boxCount);
 
-    if (!trimmedDocket) {
-      alert("Please enter the docket number.");
+    if (trimmedDocket.length !== 6) {
+      alert("Please enter the 6-digit docket number.");
       return;
     }
 
@@ -73,8 +146,6 @@ export default function NewLabelScreen() {
       // Save the new job to History first.
       await saveLabelJob(labelJob);
 
-      console.log("Label Job saved:", labelJob);
-
       setIsPrinting(true);
       setCurrentBox(0);
 
@@ -84,8 +155,6 @@ export default function NewLabelScreen() {
       });
 
       if (result.status === "completed") {
-        console.log("Printing completed successfully.");
-
         setCurrentBox(labelJob.boxCount);
 
         router.replace("/success");
@@ -100,8 +169,8 @@ export default function NewLabelScreen() {
 
       // Cancelled printing intentionally does not navigate.
     } catch (error) {
-      // This is only a safeguard for unexpected errors outside
-      // the normal printLabelJob() result handling.
+      // Safeguard for unexpected errors outside
+      // normal printLabelJob() result handling.
       console.error("Generate and print error:", error);
     } finally {
       setIsPrinting(false);
@@ -136,6 +205,7 @@ export default function NewLabelScreen() {
         {/* Screen title */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>New Label</Text>
+
           <Text style={styles.subtitle}>
             Enter the shipment details to create labels.
           </Text>
@@ -145,22 +215,29 @@ export default function NewLabelScreen() {
         <View style={styles.fieldContainer}>
           <Text style={styles.label}>Docket Number</Text>
 
-          <View style={styles.inputRow}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter docket number"
-              placeholderTextColor="#98A2B3"
-              value={docketNumber}
-              onChangeText={setDocketNumber}
-              editable={!isPrinting}
-            />
-
-            <Pressable
-              style={[styles.scanButton, isPrinting && styles.buttonDisabled]}
-              disabled={isPrinting}
-            >
-              <Text style={styles.scanButtonText}>SCAN</Text>
-            </Pressable>
+          <View style={styles.docketInputRow}>
+            {docketNumber.map((digit, index) => (
+              <TextInput
+                key={index}
+                ref={(ref) => {
+                  docketInputRefs.current[index] = ref;
+                }}
+                style={[
+                  styles.docketInput,
+                  activeDocketIndex === index && styles.docketInputActive,
+                ]}
+                value={digit}
+                onChangeText={(value) => handleDocketChange(value, index)}
+                onKeyPress={(event) => handleDocketKeyPress(event, index)}
+                keyboardType="number-pad"
+                maxLength={1}
+                selectTextOnFocus
+                editable={!isPrinting}
+                textAlign="center"
+                textContentType="oneTimeCode"
+                autoComplete="one-time-code"
+              />
+            ))}
           </View>
         </View>
 
@@ -170,7 +247,7 @@ export default function NewLabelScreen() {
 
           <TextInput
             style={styles.fullInput}
-            placeholder="Search location..."
+            placeholder="Enter location..."
             placeholderTextColor="#98A2B3"
             value={location}
             onChangeText={setLocation}
@@ -197,10 +274,11 @@ export default function NewLabelScreen() {
         <View style={styles.labelSizeCard}>
           <View>
             <Text style={styles.labelSizeTitle}>Label Size</Text>
+
             <Text style={styles.labelSizeDescription}>Fixed label size</Text>
           </View>
 
-          <Text style={styles.labelSizeValue}>3" × 4"</Text>
+          <Text style={styles.labelSizeValue}>70MM × 70MM</Text>
         </View>
 
         {/* Generate & Print */}
@@ -318,21 +396,28 @@ const styles = StyleSheet.create({
     color: COLORS.text,
   },
 
-  inputRow: {
+  docketInputRow: {
     flexDirection: "row",
-    gap: 10,
+    justifyContent: "space-between",
+    gap: 8,
   },
 
-  input: {
+  docketInput: {
     flex: 1,
-    height: 52,
-    paddingHorizontal: 14,
+    height: 56,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.inputBackground,
+    backgroundColor: COLORS.white,
     color: COLORS.text,
-    fontSize: 16,
+    fontSize: 22,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+
+  docketInputActive: {
+    borderColor: COLORS.navy,
+    borderWidth: 2,
   },
 
   fullInput: {
@@ -344,21 +429,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.inputBackground,
     color: COLORS.text,
     fontSize: 16,
-  },
-
-  scanButton: {
-    height: 52,
-    paddingHorizontal: 18,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.orange,
-  },
-
-  scanButtonText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: "700",
   },
 
   labelSizeCard: {

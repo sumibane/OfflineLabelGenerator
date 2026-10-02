@@ -11,11 +11,7 @@ let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
  * This function must only be called through getDatabase().
  */
 async function initializeDatabaseInternal(): Promise<SQLite.SQLiteDatabase> {
-  console.log("Opening Rudrax database...");
-
   const db = await SQLite.openDatabaseAsync(DATABASE_NAME);
-
-  console.log("Rudrax database opened.");
 
   await db.execAsync(`
     PRAGMA journal_mode = WAL;
@@ -31,8 +27,6 @@ async function initializeDatabaseInternal(): Promise<SQLite.SQLiteDatabase> {
     );
   `);
 
-  console.log("Rudrax database schema ready.");
-
   return db;
 }
 
@@ -43,11 +37,7 @@ async function initializeDatabaseInternal(): Promise<SQLite.SQLiteDatabase> {
  */
 function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!databasePromise) {
-    console.log("Creating database initialization promise...");
-
     databasePromise = initializeDatabaseInternal().catch((error) => {
-      console.error("Database initialization failed:", error);
-
       // Allow the next operation to retry initialization.
       databasePromise = null;
 
@@ -71,8 +61,6 @@ export async function initializeDatabase(): Promise<SQLite.SQLiteDatabase> {
 export async function saveLabelJob(job: LabelJob): Promise<void> {
   const db = await getDatabase();
 
-  console.log("Saving LabelJob:", job.id);
-
   await db.runAsync(
     `
       INSERT INTO LabelJob (
@@ -94,8 +82,6 @@ export async function saveLabelJob(job: LabelJob): Promise<void> {
     job.createdAt,
     "Pending",
   );
-
-  console.log("LabelJob saved:", job.id);
 }
 
 export async function updateLabelJobStatus(
@@ -103,8 +89,6 @@ export async function updateLabelJobStatus(
   printStatus: LabelJob["printStatus"],
 ): Promise<void> {
   const db = await getDatabase();
-
-  console.log("Updating LabelJob status:", id, printStatus);
 
   await db.runAsync(
     `
@@ -115,8 +99,6 @@ export async function updateLabelJobStatus(
     printStatus,
     id,
   );
-
-  console.log("LabelJob status updated:", id, printStatus);
 }
 
 export async function getAllLabelJobs(): Promise<LabelJob[]> {
