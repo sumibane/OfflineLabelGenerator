@@ -1,14 +1,48 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { Alert, FlatList, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { getAllLabelJobs } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
 
+import { saveLabelPdf } from "@/services/pdf-service";
+
 export default function HistoryScreen() {
   const [jobs, setJobs] = useState<LabelJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [savingJobId, setSavingJobId] = useState<string | null>(null);
+
+  const handleSave = async (job: LabelJob) => {
+    if (savingJobId) {
+      return;
+    }
+
+    try {
+      setSavingJobId(job.id);
+
+      const savedUri = await saveLabelPdf(job);
+
+      console.log("PDF saved successfully:", savedUri);
+
+      Alert.alert("Saved", "The label PDF has been saved to local storage.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+
+      console.error("PDF save error:", error);
+
+      Alert.alert("Save Failed", message);
+    } finally {
+      setSavingJobId(null);
+    }
+  };
 
   const loadJobs = async () => {
     try {
@@ -68,6 +102,34 @@ export default function HistoryScreen() {
                 </Text>
 
                 <Text style={styles.status}>{item.printStatus}</Text>
+              </View>
+
+              <View style={styles.actionsRow}>
+                <Pressable
+                  style={[
+                    styles.saveButton,
+                    savingJobId === item.id && styles.buttonDisabled,
+                  ]}
+                  onPress={() => handleSave(item)}
+                  disabled={savingJobId !== null}
+                >
+                  <Text style={styles.saveButtonText}>
+                    {savingJobId === item.id ? "SAVING..." : "SAVE PDF"}
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  style={[
+                    styles.reprintButton,
+                    savingJobId !== null && styles.buttonDisabled,
+                  ]}
+                  onPress={() => {
+                    // Reprint functionality will be added next.
+                  }}
+                  disabled={savingJobId !== null}
+                >
+                  <Text style={styles.reprintButtonText}>REPRINT</Text>
+                </Pressable>
               </View>
             </View>
           )}
@@ -155,5 +217,48 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 15,
     color: "#667085",
+  },
+  actionsRow: {
+    marginTop: 14,
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  saveButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#142B4A",
+  },
+
+  saveButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
+
+  reprintButton: {
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#F58220",
+  },
+
+  reprintButtonText: {
+    color: "#F58220",
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.4,
+  },
+
+  buttonDisabled: {
+    opacity: 0.6,
   },
 });
