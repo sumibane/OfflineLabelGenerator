@@ -1,8 +1,9 @@
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import {
   Alert,
   FlatList,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -14,14 +15,20 @@ import { getAllLabelJobs } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
 
 import { saveLabelPdf } from "@/services/pdf-service";
+import { printLabelJob } from "@/services/printing/print-label-job";
 
 export default function HistoryScreen() {
   const [jobs, setJobs] = useState<LabelJob[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [savingJobId, setSavingJobId] = useState<string | null>(null);
 
+  const [printingJobId, setPrintingJobId] = useState<string | null>(null);
+
+  const [currentBox, setCurrentBox] = useState(0);
+
   const handleSave = async (job: LabelJob) => {
-    if (savingJobId) {
+    if (savingJobId || printingJobId) {
       return;
     }
 
@@ -44,6 +51,42 @@ export default function HistoryScreen() {
     }
   };
 
+  const handleReprint = async (job: LabelJob) => {
+    if (savingJobId || printingJobId) {
+      return;
+    }
+
+    try {
+      setPrintingJobId(job.id);
+      setCurrentBox(0);
+
+      const result = await printLabelJob(job, (currentBox) => {
+        setCurrentBox(currentBox);
+      });
+
+      if (result.status === "completed") {
+        console.log("Reprint completed successfully.");
+
+        setCurrentBox(job.boxCount);
+
+        router.replace("/success");
+      } else if (result.status === "failed") {
+        router.replace({
+          pathname: "/error",
+          params: {
+            message: result.error,
+          },
+        });
+      }
+
+      // Cancelled printing intentionally does not navigate.
+    } catch (error) {
+      console.error("Reprint error:", error);
+    } finally {
+      setPrintingJobId(null);
+    }
+  };
+
   const loadJobs = async () => {
     try {
       setLoading(true);
@@ -55,6 +98,7 @@ export default function HistoryScreen() {
       console.log("History loaded:", savedJobs);
     } catch (error) {
       console.error("Failed to load history:", error);
+
       Alert.alert(
         "Unable to load history",
         "Something went wrong while loading saved labels.",
@@ -70,10 +114,18 @@ export default function HistoryScreen() {
     }, []),
   );
 
+  const printingJob = jobs.find((job) => job.id === printingJobId);
+
+  const progress =
+    printingJob && printingJob.boxCount > 0
+      ? currentBox / printingJob.boxCount
+      : 0;
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <Text style={styles.title}>History</Text>
+
         <Text style={styles.subtitle}>Previously generated label jobs</Text>
       </View>
 
@@ -105,36 +157,71 @@ export default function HistoryScreen() {
               </View>
 
               <View style={styles.actionsRow}>
+                {/* SAVE PDF */}
                 <Pressable
                   style={[
                     styles.saveButton,
-                    savingJobId === item.id && styles.buttonDisabled,
+                    (savingJobId !== null || printingJobId !== null) &&
+                      styles.buttonDisabled,
                   ]}
                   onPress={() => handleSave(item)}
-                  disabled={savingJobId !== null}
+                  disabled={savingJobId !== null || printingJobId !== null}
                 >
                   <Text style={styles.saveButtonText}>
                     {savingJobId === item.id ? "SAVING..." : "SAVE PDF"}
                   </Text>
                 </Pressable>
 
+                {/* REPRINT */}
                 <Pressable
                   style={[
                     styles.reprintButton,
-                    savingJobId !== null && styles.buttonDisabled,
+                    (savingJobId !== null || printingJobId !== null) &&
+                      styles.buttonDisabled,
                   ]}
-                  onPress={() => {
-                    // Reprint functionality will be added next.
-                  }}
-                  disabled={savingJobId !== null}
+                  onPress={() => handleReprint(item)}
+                  disabled={savingJobId !== null || printingJobId !== null}
                 >
-                  <Text style={styles.reprintButtonText}>REPRINT</Text>
+                  <Text style={styles.reprintButtonText}>
+                    {printingJobId === item.id ? "PRINTING..." : "REPRINT"}
+                  </Text>
                 </Pressable>
               </View>
             </View>
           )}
         />
       )}
+
+      {/* Reprint Printing Modal */}
+      <Modal
+        visible={printingJobId !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.printingModal}>
+            <Text style={styles.printingTitle}>Printing Labels</Text>
+
+            <Text style={styles.printingProgress}>
+              {currentBox} / {printingJob?.boxCount ?? 0}
+            </Text>
+
+            <View style={styles.progressTrack}>
+              <View
+                style={[
+                  styles.progressFill,
+                  {
+                    width: `${Math.min(progress * 100, 100)}%`,
+                  },
+                ]}
+              />
+            </View>
+
+            <Text style={styles.printingMessage}>Please wait...</Text>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -218,6 +305,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: "#667085",
   },
+
   actionsRow: {
     marginTop: 14,
     flexDirection: "row",
@@ -260,5 +348,56 @@ const styles = StyleSheet.create({
 
   buttonDisabled: {
     opacity: 0.6,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+
+  printingModal: {
+    width: "100%",
+    maxWidth: 360,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 28,
+    alignItems: "center",
+  },
+
+  printingTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#142B4A",
+  },
+
+  printingProgress: {
+    marginTop: 14,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#142B4A",
+  },
+
+  progressTrack: {
+    width: "100%",
+    height: 10,
+    marginTop: 22,
+    borderRadius: 5,
+    overflow: "hidden",
+    backgroundColor: "#D9DEE5",
+  },
+
+  progressFill: {
+    height: "100%",
+    borderRadius: 5,
+    backgroundColor: "#142B4A",
+  },
+
+  printingMessage: {
+    marginTop: 14,
+    fontSize: 14,
+    color: "#667085",
   },
 });

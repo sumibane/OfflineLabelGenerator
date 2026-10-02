@@ -1,6 +1,6 @@
-import { saveLabelJob, updateLabelJobStatus } from "@/database/database";
+import { saveLabelJob } from "@/database/database";
 import type { LabelJob } from "@/models/label-job";
-import { getPrinterService } from "@/services/printing/printer-service-factory";
+import { printLabelJob } from "@/services/printing/print-label-job";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -25,35 +25,6 @@ const COLORS = {
   secondaryText: "#667085",
   inputBackground: "#FFFFFF",
   overlay: "rgba(0, 0, 0, 0.45)",
-};
-
-const getUserFriendlyPrintError = (error: string): string => {
-  const normalizedError = error.toLowerCase();
-
-  if (
-    normalizedError.includes("connectionfailedexception") ||
-    normalizedError.includes("socket might closed") ||
-    normalizedError.includes("read failed") ||
-    normalizedError.includes("timeout")
-  ) {
-    return "Unable to connect to the printer. Please make sure the printer is powered on, nearby, and connected.";
-  }
-
-  if (
-    normalizedError.includes("bluetooth") ||
-    normalizedError.includes("bluetoothadapter")
-  ) {
-    return "There was a problem with the Bluetooth connection. Please check that Bluetooth is enabled and the printer is connected.";
-  }
-
-  if (
-    normalizedError.includes("printer") &&
-    normalizedError.includes("connect")
-  ) {
-    return "Unable to connect to the printer. Please check the printer connection and try again.";
-  }
-
-  return "The labels could not be printed. Please check the printer and try again.";
 };
 
 export default function NewLabelScreen() {
@@ -99,6 +70,7 @@ export default function NewLabelScreen() {
     };
 
     try {
+      // Save the new job to History first.
       await saveLabelJob(labelJob);
 
       console.log("Label Job saved:", labelJob);
@@ -106,57 +78,31 @@ export default function NewLabelScreen() {
       setIsPrinting(true);
       setCurrentBox(0);
 
-      const printer = await getPrinterService();
-
-      const result = await printer.print(labelJob, (progress) => {
-        setCurrentBox(progress.currentBox);
+      // Use the shared printing service.
+      const result = await printLabelJob(labelJob, (currentBox) => {
+        setCurrentBox(currentBox);
       });
 
       if (result.status === "completed") {
-        await updateLabelJobStatus(labelJob.id, "Completed");
-
         console.log("Printing completed successfully.");
 
         setCurrentBox(labelJob.boxCount);
 
         router.replace("/success");
-      } else if (result.status === "cancelled") {
-        console.log("Printing cancelled.");
-      } else {
-        const technicalError =
-          result.error || "Unknown printing error occurred.";
-
-        // Keep the detailed technical error in the developer log.
-        console.error("TSC printing failed:", technicalError);
-
-        // Show only a user-friendly message to the user.
-        const userFriendlyError = getUserFriendlyPrintError(technicalError);
-
-        await updateLabelJobStatus(labelJob.id, "Failed");
-
+      } else if (result.status === "failed") {
         router.replace({
           pathname: "/error",
           params: {
-            message: userFriendlyError,
+            message: result.error,
           },
         });
       }
+
+      // Cancelled printing intentionally does not navigate.
     } catch (error) {
-      const technicalError =
-        error instanceof Error ? error.message : String(error);
-
-      console.error("Printing error:", technicalError);
-
-      const userFriendlyError = getUserFriendlyPrintError(technicalError);
-
-      await updateLabelJobStatus(labelJob.id, "Failed");
-
-      router.replace({
-        pathname: "/error",
-        params: {
-          message: userFriendlyError,
-        },
-      });
+      // This is only a safeguard for unexpected errors outside
+      // the normal printLabelJob() result handling.
+      console.error("Generate and print error:", error);
     } finally {
       setIsPrinting(false);
     }
